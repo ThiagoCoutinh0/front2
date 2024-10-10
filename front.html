@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerenciamento de Receitas</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="container mt-5">
+    <h1 class="text-center">Gerenciar Receitas</h1>
+
+    <!-- Input de IMC -->
+    <div class="mb-3">
+      <label for="imcInput" class="form-label">Informe seu IMC:</label>
+      <input type="number" step="0.1" id="imcInput" class="form-control" placeholder="Digite seu IMC">
+    </div>
+    <button class="btn btn-primary mb-3" onclick="sugerirReceita()">Sugerir Receita</button>
+
+    <!-- Exibição da receita sugerida -->
+    <div id="receitaSugerida" class="mt-4">
+      <h3>Receita sugerida:</h3>
+      <p><strong>Nome:</strong> <span id="nomeReceita"></span></p>
+      <p><strong>Tipo:</strong> <span id="tipoReceita"></span></p>
+      <p><strong>Ingredientes:</strong> <span id="ingredientesReceita"></span></p>
+    </div>
+
+    <!-- Formulário para adicionar receita -->
+    <h3>Adicionar Receita</h3>
+    <form id="addReceitaForm" onsubmit="adicionarReceita(event)">
+      <div class="mb-3">
+        <label for="nomeReceita" class="form-label">Nome da Receita:</label>
+        <input type="text" id="nomeReceitaInput" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label for="tipoReceita" class="form-label">Tipo:</label>
+        <select id="tipoReceitaInput" class="form-select" required>
+          <option value="Normal">Normal</option>
+          <option value="Fit">Fit</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="ingredientesReceita" class="form-label">Ingredientes:</label>
+        <input type="text" id="ingredientesReceitaInput" class="form-control" required>
+      </div>
+      <button type="submit" class="btn btn-success">Adicionar Receita</button>
+    </form>
+
+    <!-- Listagem de todas as receitas -->
+    <div id="todasReceitas" class="mt-5">
+      <h3>Todas as receitas:</h3>
+      <ul class="list-group" id="listaReceitas">
+        <!-- Receitas serão listadas aqui -->
+      </ul>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script>
+    const apiUrl = 'http://localhost:5000/Receita'; // Atualize o IP ou URL conforme necessário
+
+    // Função para sugerir receita com base no IMC
+    function sugerirReceita() {
+      const imc = document.getElementById('imcInput').value;
+      
+      if (!imc) {
+        alert('Por favor, informe seu IMC.');
+        return;
+      }
+
+      axios.get(`${apiUrl}/Sugerir/${imc}`)
+        .then(response => {
+          const receita = response.data;
+          document.getElementById('nomeReceita').textContent = receita.nomeReceita;
+          document.getElementById('tipoReceita').textContent = receita.tipo;
+          document.getElementById('ingredientesReceita').textContent = receita.ingredientes;
+        })
+        .catch(error => {
+          console.error('Erro ao sugerir receita:', error);
+          alert('Não foi possível sugerir uma receita.');
+        });
+    }
+
+    // Função para listar todas as receitas
+    function listarReceitas() {
+      axios.get(apiUrl)
+        .then(response => {
+          const receitas = response.data;
+          const listaReceitas = document.getElementById('listaReceitas');
+          listaReceitas.innerHTML = '';
+
+          receitas.forEach(receita => {
+            const listItem = document.createElement('li');
+            listItem.classList.add('list-group-item');
+            listItem.innerHTML = `
+              <strong>${receita.nomeReceita}</strong> (Tipo: ${receita.tipo})<br>
+              Ingredientes: ${receita.ingredientes}<br>
+              <button class="btn btn-warning btn-sm" onclick="editarReceita(${receita.receitaId})">Editar</button>
+              <button class="btn btn-danger btn-sm" onclick="deletarReceita(${receita.receitaId})">Excluir</button>
+            `;
+            listaReceitas.appendChild(listItem);
+          });
+        })
+        .catch(error => {
+          console.error('Erro ao listar receitas:', error);
+        });
+    }
+
+    // Função para adicionar uma nova receita (POST)
+    function adicionarReceita(event) {
+      event.preventDefault();
+      const nomeReceita = document.getElementById('nomeReceitaInput').value;
+      const tipoReceita = document.getElementById('tipoReceitaInput').value;
+      const ingredientesReceita = document.getElementById('ingredientesReceitaInput').value;
+
+      const novaReceita = {
+        nomeReceita: nomeReceita,
+        tipo: tipoReceita,
+        ingredientes: ingredientesReceita
+      };
+
+      axios.post(apiUrl, novaReceita)
+        .then(response => {
+          alert('Receita adicionada com sucesso!');
+          listarReceitas();  // Atualiza a lista de receitas
+        })
+        .catch(error => {
+          console.error('Erro ao adicionar receita:', error);
+          alert('Erro ao adicionar a receita.');
+        });
+    }
+
+    // Função para deletar receita (DELETE)
+    function deletarReceita(id) {
+      if (confirm('Tem certeza que deseja excluir esta receita?')) {
+        axios.delete(`${apiUrl}/${id}`)
+          .then(response => {
+            alert('Receita excluída com sucesso!');
+            listarReceitas();  // Atualiza a lista de receitas
+          })
+          .catch(error => {
+            console.error('Erro ao excluir receita:', error);
+            alert('Erro ao excluir a receita.');
+          });
+      }
+    }
+
+    // Função para editar receita (PUT)
+    function editarReceita(id) {
+      const novoNome = prompt('Digite o novo nome da receita:');
+      const novoTipo = prompt('Digite o novo tipo (Fit ou Normal):');
+      const novosIngredientes = prompt('Digite os novos ingredientes:');
+
+      if (novoNome && novoTipo && novosIngredientes) {
+        const receitaAtualizada = {
+          nomeReceita: novoNome,
+          tipo: novoTipo,
+          ingredientes: novosIngredientes
+        };
+
+        axios.put(`${apiUrl}/${id}`, receitaAtualizada)
+          .then(response => {
+            alert('Receita atualizada com sucesso!');
+            listarReceitas();  // Atualiza a lista de receitas
+          })
+          .catch(error => {
+            console.error('Erro ao atualizar receita:', error);
+            alert('Erro ao atualizar a receita.');
+          });
+      }
+    }
+
+    // Carregar todas as receitas ao iniciar a página
+    window.onload = listarReceitas;
+  </script>
+</body>
+</html>
